@@ -9,7 +9,6 @@ edition = "2021"
 input = "0.9"
 libc = "0.2.154"
 reqwest = { version = "0.12.4", features = ["json"] }
-arboard = { version = "3.4.0", features = ["wl-clipboard-rs", "wayland-data-control"] }
 md-5 = "0.10.6"
 tokio = { version = "1.37.0", features = ["full"] }
 rand = "0.8.5"
@@ -20,3 +19,4 @@ egui_extras = { version = "0.27.2", features = ["all_loaders"] }
 image = { version = "0.24", features = ["jpeg", "png"] }
 toml = "0.8.13"
 serde = "1.0.202"
+selection = "1.2"

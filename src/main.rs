@@ -1,4 +1,3 @@
-use arboard::GetExtLinux;
 use input::event::pointer::{ButtonState};
 use input::event::PointerEvent;
 use input::{Event, Libinput, LibinputInterface};
@@ -7,7 +6,6 @@ use libc::{O_RDONLY, O_RDWR, O_WRONLY};
 use std::fs::{File, OpenOptions};
 use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
 use std::path::Path;
-use std::sync::{OnceLock, Mutex};
 use std::time::Duration;
 
 use tokio::{self, select};
@@ -17,8 +15,6 @@ use eframe::egui;
 mod api;
 
 
-
-//static TRANS_RESULT: OnceLock<Mutex<Option<String>>> = OnceLock::new(); 
 
 struct Interface;
 
@@ -47,7 +43,6 @@ struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        //let res = TRANS_RESULT.get().unwrap().lock().unwrap();
         let res = self.res_cx.try_recv();
         if res.is_ok() {
             self.cur = res.unwrap();
@@ -73,7 +68,6 @@ fn main() {
     let (event_tx, event_cx) = mpsc::channel();
     let (res_tx, res_cx) = mpsc::channel();
     let (hide_tx, hide_cx) = mpsc::channel();
-    //let _ = TRANS_RESULT.set(Mutex::new(None));
     std::thread::spawn(move || {
         let mut input = Libinput::new_with_udev(Interface);
         input.udev_assign_seat("seat0").unwrap();
@@ -94,7 +88,7 @@ fn main() {
     });
 
     std::thread::spawn(move || {
-        let mut clipboard = arboard::Clipboard::new().unwrap();
+        //let mut clipboard = arboard::Clipboard::new().unwrap();
         let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
 
         let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
@@ -121,16 +115,15 @@ fn main() {
             loop {
                 let _ = event_cx.recv().unwrap();
                 
-                let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
+                let text = selection::get_text();
+                //let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
                 //println!("fan yi qing qiu {}", text);
                 
                 let res = api.request(text.as_str()).await;
 
                 reset_tx.send(()).await.unwrap();
                 //println!("fan yi xiang ying {}", res);
-                //res_tx.send(res).unwrap();
-                //let mut setter = TRANS_RESULT.get().unwrap().lock().unwrap();
-                //*setter = Some(res);
+
                 res_tx.send(res).unwrap();
 
             }
@@ -141,11 +134,11 @@ fn main() {
     options.viewport.mouse_passthrough = Some(true);
     options.viewport.decorations = Some(false);
     let _ = eframe::run_native(
-        "My egui App",
+        "slpopt",
         options,
         Box::new(|cc| {
             let mut fonts = egui::FontDefinitions::default();
-            fonts.font_data.insert("wqy".to_owned(), egui::FontData::from_static(include_bytes!("/home/cc1/.local/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc")));
+            fonts.font_data.insert("wqy".to_owned(), egui::FontData::from_static(include_bytes!("../assets/wqy-microhei.ttc")));
             fonts.families.get_mut(&egui::FontFamily::Proportional).unwrap().insert(0, "wqy".to_owned());
             fonts.families.get_mut(&egui::FontFamily::Monospace).unwrap().push("wqy".to_owned());
             cc.egui_ctx.set_fonts(fonts);
