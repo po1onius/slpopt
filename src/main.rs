@@ -68,6 +68,8 @@ fn main() {
     let (event_tx, event_cx) = mpsc::channel();
     let (res_tx, res_cx) = mpsc::channel();
     let (hide_tx, hide_cx) = mpsc::channel();
+    let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
+
     std::thread::spawn(move || {
         let mut input = Libinput::new_with_udev(Interface);
         input.udev_assign_seat("seat0").unwrap();
@@ -87,37 +89,42 @@ fn main() {
         }
     });
 
+    std::thread::spawn(move ||{
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        rt.block_on(async {
+            loop {
+                select! {
+                    _ = tokio::time::sleep(Duration::from_secs(3)) => {
+                        hide_tx.send(()).unwrap();
+                    }
+                    _ = reset_cx.recv() => {
+                        continue;
+                    }
+                }
+            }
+
+        })
+
+    });
+
     std::thread::spawn(move || {
         //let mut clipboard = arboard::Clipboard::new().unwrap();
         let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
 
-        let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
-        
-        std::thread::spawn(move ||{
-            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-            rt.block_on(async {
-                loop {
-                    select! {
-                        _ = tokio::time::sleep(Duration::from_secs(3)) => {
-                            hide_tx.send(()).unwrap();
-                        }
-                        _ = reset_cx.recv() => {
-                            continue;
-                        }
-                    }
-                }
-
-            })
-
-        });
         let api = api::TransRequest::from_config();
         rt.block_on(async {
+            let mut last_text = selection::get_text();
             loop {
                 let _ = event_cx.recv().unwrap();
                 
                 let text = selection::get_text();
+                if text == last_text {
+                    continue;
+                } else {
+                    last_text = text.clone();
+                }
                 //let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
-                //println!("fan yi qing qiu {}", text);
+                println!("translate request: {}", text);
                 
                 let res = api.request(text.as_str()).await;
 
