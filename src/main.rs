@@ -116,15 +116,17 @@ fn main() {
             let mut last_text = selection::get_text();
             loop {
                 let _ = event_cx.recv().unwrap();
-                
+                //println!("mouse left up");
+                std::thread::sleep(Duration::from_millis(100));
                 let text = selection::get_text();
+                //println!("select text: {}", text);
                 if text == last_text {
                     continue;
                 } else {
                     last_text = text.clone();
                 }
                 //let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
-                println!("translate request: {}", text);
+                //println!("translate request: {}", text);
                 
                 let res = api.request(text.as_str()).await;
 
