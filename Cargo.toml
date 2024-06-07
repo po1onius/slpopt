@@ -16,5 +16,5 @@ serde_json = "1.0.117"
 toml = "0.8.13"
 serde = { version = "1.0.203", features = ["derive"] }
 selection = "1.2"
-gtk4 = "0.8.2"
+gtk = { version = "0.8.2", package = "gtk4" }
 async-channel = "2.3.1"
