@@ -10,10 +10,16 @@ use std::time::Duration;
 
 use tokio::{self, select};
 use std::sync::mpsc::{self, Receiver};
-use eframe::egui;
 
 mod api;
 
+use gtk4 as gtk;
+use glib::clone;
+use gtk::prelude::*;
+use gtk::{glib, Application, ApplicationWindow};
+use serde::Deserialize;
+use std::sync::OnceLock;
+use tokio::runtime::Runtime;
 
 
 struct Interface;
@@ -33,41 +39,23 @@ impl LibinputInterface for Interface {
     }
 }
 
-
-struct App {
-    res_cx: Receiver<String>,
-    cur: String,
-    show: bool,
-    hide_cx: Receiver<()>
-}
-
-impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let res = self.res_cx.try_recv();
-        if res.is_ok() {
-            self.cur = res.unwrap();
-            self.show = true;
-        }
-        if self.hide_cx.try_recv().is_ok() {
-            self.show = false;
-        }
-        if self.show {
-            egui::Window::new("translate result").show(ctx, |ui| {
-                ui.label(&self.cur);
-            });
-        }
-        ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(true));
-        //ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
-
-        ctx.request_repaint();
-    }
-}
 //test text: In hindsight, we can tell you: it’s more challenging than it seems. Users attempting to travel 5 years back with guix time-machine are (or were) unavoidably going to hit bumps on the road—a real problem because that’s one of the use cases Guix aims to support well, in particular in a reproducible research context.
 
 fn main() {
+    
+    let app = Application::builder()
+        .application_id("org.slpopt")
+        .build();
+    app.connect_activate(build_ui);
+    app.run();
+
+}
+
+fn build_ui(app: &Application) {
+
     let (event_tx, event_cx) = mpsc::channel();
-    let (res_tx, res_cx) = mpsc::channel();
-    let (hide_tx, hide_cx) = mpsc::channel();
+    let (res_tx, mut res_cx) = tokio::sync::mpsc::channel(1);
+    let (hide_tx, mut hide_cx) = tokio::sync::mpsc::channel(1);
     let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
 
     std::thread::spawn(move || {
@@ -95,7 +83,7 @@ fn main() {
             loop {
                 select! {
                     _ = tokio::time::sleep(Duration::from_secs(3)) => {
-                        hide_tx.send(()).unwrap();
+                        hide_tx.send(()).await.unwrap();
                     }
                     _ = reset_cx.recv() => {
                         continue;
@@ -106,7 +94,6 @@ fn main() {
         })
 
     });
-
     std::thread::spawn(move || {
         //let mut clipboard = arboard::Clipboard::new().unwrap();
         let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
@@ -133,35 +120,39 @@ fn main() {
                 reset_tx.send(()).await.unwrap();
                 //println!("fan yi xiang ying {}", res);
 
-                res_tx.send(res).unwrap();
+                res_tx.send(res).await.unwrap();
 
             }
         });
     });
 
-    let mut options = eframe::NativeOptions::default();
-    options.viewport.mouse_passthrough = Some(true);
-    options.viewport.decorations = Some(false);
-    let _ = eframe::run_native(
-        "slpopt",
-        options,
-        Box::new(|cc| {
-            let mut fonts = egui::FontDefinitions::default();
-            fonts.font_data.insert("wqy".to_owned(), egui::FontData::from_static(include_bytes!("../assets/wqy-microhei.ttc")));
-            fonts.families.get_mut(&egui::FontFamily::Proportional).unwrap().insert(0, "wqy".to_owned());
-            fonts.families.get_mut(&egui::FontFamily::Monospace).unwrap().push("wqy".to_owned());
-            cc.egui_ctx.set_fonts(fonts);
-            // This gives us image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-
-            Box::new(App{
-                res_cx,
-                cur: "".to_string(),
-                show: false,
-                hide_cx
-            })
-        }),
-    );
-
-
+    let label = gtk::Label::new(None);
+    label.set_wrap(true);
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .title("slpopt")
+        .default_width(600)
+        .default_height(300)
+        .child(&label)
+        .build();
+    
+    window.present();
+    
+    window.set_visible(false);
+    
+    glib::spawn_future_local(async move {
+        loop {
+            select! {
+                _ = hide_cx.recv() => {
+                    window.set_visible(false);
+                    //window.destroy();
+                }
+                res = res_cx.recv() => {
+                    //window.present();
+                    window.set_visible(true);
+                    label.set_text(res.unwrap().as_str());
+                }
+            }
+        }
+    });
 }
