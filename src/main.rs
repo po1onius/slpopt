@@ -9,17 +9,13 @@ use std::path::Path;
 use std::time::Duration;
 
 use tokio::{self, select};
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc;
 
 mod api;
 
-use gtk4 as gtk;
-use glib::clone;
+
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow};
-use serde::Deserialize;
-use std::sync::OnceLock;
-use tokio::runtime::Runtime;
 
 
 struct Interface;
@@ -131,8 +127,10 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("slpopt")
-        .default_width(600)
-        .default_height(300)
+        .default_width(300)
+        .default_height(100)
+        .decorated(false)
+        .resizable(false)
         .child(&label)
         .build();
     
