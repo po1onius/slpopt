@@ -1,4 +1,4 @@
-use input::event::pointer::{ButtonState};
+use input::event::pointer::ButtonState;
 use input::event::PointerEvent;
 use input::{Event, Libinput, LibinputInterface};
 use libc::{O_RDONLY, O_RDWR, O_WRONLY};
@@ -8,15 +8,13 @@ use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
 use std::path::Path;
 use std::time::Duration;
 
-use tokio::{self, select};
 use std::sync::mpsc;
+use tokio::{self, select};
 
 mod api;
 
-
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow};
-
 
 struct Interface;
 
@@ -38,17 +36,12 @@ impl LibinputInterface for Interface {
 //test text: In hindsight, we can tell you: it’s more challenging than it seems. Users attempting to travel 5 years back with guix time-machine are (or were) unavoidably going to hit bumps on the road—a real problem because that’s one of the use cases Guix aims to support well, in particular in a reproducible research context.
 
 fn main() {
-    
-    let app = Application::builder()
-        .application_id("org.slpopt")
-        .build();
+    let app = Application::builder().application_id("org.slpopt").build();
     app.connect_activate(build_ui);
     app.run();
-
 }
 
 fn build_ui(app: &Application) {
-
     let (event_tx, event_cx) = mpsc::channel();
     let (res_tx, mut res_cx) = tokio::sync::mpsc::channel(1);
     let (hide_tx, mut hide_cx) = tokio::sync::mpsc::channel(1);
@@ -73,8 +66,11 @@ fn build_ui(app: &Application) {
         }
     });
 
-    std::thread::spawn(move ||{
-        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
         rt.block_on(async {
             loop {
                 select! {
@@ -86,13 +82,14 @@ fn build_ui(app: &Application) {
                     }
                 }
             }
-
         })
-
     });
     std::thread::spawn(move || {
         //let mut clipboard = arboard::Clipboard::new().unwrap();
-        let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
 
         let api = api::TransRequest::from_config();
         rt.block_on(async {
@@ -110,14 +107,13 @@ fn build_ui(app: &Application) {
                 }
                 //let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
                 //println!("translate request: {}", text);
-                
+
                 let res = api.request(text.as_str()).await;
 
                 reset_tx.send(()).await.unwrap();
                 //println!("fan yi xiang ying {}", res);
 
                 res_tx.send(res).await.unwrap();
-
             }
         });
     });
@@ -133,11 +129,11 @@ fn build_ui(app: &Application) {
         .resizable(false)
         .child(&label)
         .build();
-    
+
     window.present();
-    
+
     window.set_visible(false);
-    
+
     glib::spawn_future_local(async move {
         loop {
             select! {
