@@ -12,7 +12,7 @@ use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
 use std::path::Path;
 use std::time::Duration;
 
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use tokio::{self, select};
 
 use gtk::prelude::*;
@@ -45,12 +45,7 @@ fn main() {
     app.run();
 }
 
-fn build_ui(app: &Application) {
-    let (event_tx, event_cx) = mpsc::channel();
-    let (res_tx, mut res_cx) = tokio::sync::mpsc::channel(1);
-    let (hide_tx, mut hide_cx) = tokio::sync::mpsc::channel(1);
-    let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
-
+fn translate_trigger_event_listener_run(event_tx: mpsc::Sender<()>) {
     std::thread::spawn(move || {
         let modkey = config::key2no(config::get_config().modkey.as_str());
         let mut modkey_pressed = modkey == 0;
@@ -84,7 +79,13 @@ fn build_ui(app: &Application) {
             }
         }
     });
+}
 
+fn window_auto_hide_alarm_run(
+    hold: Arc<Mutex<bool>>,
+    hide_tx: tokio::sync::mpsc::Sender<()>,
+    mut reset_cx: tokio::sync::mpsc::Receiver<()>,
+) {
     std::thread::spawn(move || {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -94,7 +95,9 @@ fn build_ui(app: &Application) {
             loop {
                 select! {
                     _ = tokio::time::sleep(Duration::from_secs(3)) => {
-                        hide_tx.send(()).await.unwrap();
+                        if !*hold.lock().unwrap() {
+                            hide_tx.send(()).await.unwrap();
+                        }
                     }
                     _ = reset_cx.recv() => {
                         continue;
@@ -103,6 +106,13 @@ fn build_ui(app: &Application) {
             }
         })
     });
+}
+
+fn translate_run(
+    event_cx: mpsc::Receiver<()>,
+    reset_tx: tokio::sync::mpsc::Sender<()>,
+    res_tx: tokio::sync::mpsc::Sender<String>,
+) {
     std::thread::spawn(move || {
         //let mut clipboard = arboard::Clipboard::new().unwrap();
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -136,6 +146,21 @@ fn build_ui(app: &Application) {
             }
         });
     });
+}
+
+fn build_ui(app: &Application) {
+    let hold = Arc::new(Mutex::new(false));
+    let hold_enter = Arc::clone(&hold);
+    let hold_leave = Arc::clone(&hold);
+
+    let (event_tx, event_cx) = mpsc::channel();
+    let (res_tx, mut res_cx) = tokio::sync::mpsc::channel(1);
+    let (hide_tx, mut hide_cx) = tokio::sync::mpsc::channel(1);
+    let (reset_tx, reset_cx) = tokio::sync::mpsc::channel(1);
+
+    translate_trigger_event_listener_run(event_tx);
+    window_auto_hide_alarm_run(hold, hide_tx, reset_cx);
+    translate_run(event_cx, reset_tx, res_tx);
 
     let label = gtk::Label::new(None);
     label.set_wrap(true);
@@ -150,7 +175,16 @@ fn build_ui(app: &Application) {
         .build();
 
     window.present();
-
+    let ecm = gtk::EventControllerMotion::new();
+    ecm.connect_enter(move |_, _, _| {
+        *hold_enter.lock().unwrap() = true;
+        println!("pointer enter window");
+    });
+    ecm.connect_leave(move |_| {
+        *hold_leave.lock().unwrap() = false;
+        println!("pointer leave window");
+    });
+    window.add_controller(ecm);
     window.set_visible(false);
 
     glib::spawn_future_local(async move {
