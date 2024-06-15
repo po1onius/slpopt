@@ -1,52 +1,27 @@
+use crate::config;
 use md5::{Digest, Md5};
 use rand::Rng;
 use reqwest::{
     self,
     header::{HeaderValue, CONTENT_TYPE},
 };
-use serde::Deserialize;
-use std::fs;
-
-#[derive(Deserialize)]
-pub struct Config {
-    language: String,
-    vendor: String,
-    baidu: Option<Baidu>,
-    google: Option<Google>,
-    bing: Option<Bing>,
-}
-
-#[derive(Deserialize, Clone)]
-struct Baidu {
-    appid: String,
-    token: String,
-}
-
-#[derive(Deserialize)]
-struct Google {}
-
-#[derive(Deserialize)]
-struct Bing {}
 
 pub struct TransRequest {
-    config: Config,
     req_client: reqwest::Client,
 }
 
 const BAIDU_URL: &str = "http://api.fanyi.baidu.com/api/trans/vip/translate";
 
 impl TransRequest {
-    pub fn from_config() -> Self {
-        let config = fs::read_to_string("config.toml").unwrap();
-        let config = toml::from_str(config.as_str()).unwrap();
+    pub fn new() -> Self {
         Self {
-            config,
             req_client: reqwest::Client::new(),
         }
     }
 
     async fn baidu(&self, text: &str) -> String {
-        let baidu = self.config.baidu.clone().unwrap();
+        let config = config::get_config();
+        let baidu = config.baidu.clone().unwrap();
 
         let mut rng = rand::thread_rng();
         let salt = rng.gen_range(32768..65536).to_string();
@@ -68,7 +43,7 @@ impl TransRequest {
         let body = [
             ("q", text),
             ("from", "auto"),
-            ("to", self.config.language.as_str()),
+            ("to", config.language.as_str()),
             ("appid", baidu.appid.as_str()),
             ("salt", salt.as_str()),
             ("sign", sign.as_str()),
@@ -98,7 +73,7 @@ impl TransRequest {
     }
 
     pub async fn request(&self, text: &str) -> String {
-        match self.config.vendor.as_str() {
+        match config::get_config().vendor.as_str() {
             "baidu" => self.baidu(text).await,
             _ => "error".to_string(),
         }

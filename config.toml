@@ -1,4 +1,5 @@
-language = "en"
+language = "zh"
+modkey = "LEFTALT" # "None" "LEFTCTRL" "RIGHTALT" "RIGHTCTRL"
 vendor = "baidu"
 [baidu]
 appid = "20240111002048066"

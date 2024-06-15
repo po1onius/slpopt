@@ -1,3 +1,7 @@
+mod api;
+mod config;
+
+use input::event::keyboard::{KeyState, KeyboardEventTrait};
 use input::event::pointer::ButtonState;
 use input::event::PointerEvent;
 use input::{Event, Libinput, LibinputInterface};
@@ -11,10 +15,10 @@ use std::time::Duration;
 use std::sync::mpsc;
 use tokio::{self, select};
 
-mod api;
-
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow};
+
+use crate::config::MOUSE_LEFT;
 
 struct Interface;
 
@@ -48,20 +52,35 @@ fn build_ui(app: &Application) {
     let (reset_tx, mut reset_cx) = tokio::sync::mpsc::channel(1);
 
     std::thread::spawn(move || {
+        let modkey = config::key2no(config::get_config().modkey.as_str());
+        let mut modkey_pressed = modkey == 0;
         let mut input = Libinput::new_with_udev(Interface);
         input.udev_assign_seat("seat0").unwrap();
         loop {
             input.dispatch().unwrap();
-            let btn_ev = input.find(|event| {
-                if let Event::Pointer(PointerEvent::Button(e)) = event {
-                    if e.button() == 272 && e.button_state() == ButtonState::Released {
-                        return true;
+            for e in &mut input {
+                match e {
+                    Event::Pointer(PointerEvent::Button(btn_ev)) => {
+                        if btn_ev.button() == MOUSE_LEFT
+                            && btn_ev.button_state() == ButtonState::Released
+                            && modkey_pressed
+                        {
+                            event_tx.send(()).unwrap();
+                        }
                     }
+                    Event::Keyboard(key_ev) => {
+                        if modkey != 0 && key_ev.key() == modkey {
+                            if key_ev.key_state() == KeyState::Pressed {
+                                modkey_pressed = true;
+                                //println!("mod key pressed");
+                            } else {
+                                modkey_pressed = false;
+                                //println!("mod key released");
+                            }
+                        }
+                    }
+                    _ => (),
                 }
-                return false;
-            });
-            if btn_ev.is_some() {
-                event_tx.send(()).unwrap();
             }
         }
     });
@@ -91,7 +110,7 @@ fn build_ui(app: &Application) {
             .build()
             .unwrap();
 
-        let api = api::TransRequest::from_config();
+        let api = api::TransRequest::new();
         rt.block_on(async {
             let mut last_text = selection::get_text();
             loop {
