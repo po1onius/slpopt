@@ -1865,6 +1865,7 @@ name = "slpopt"
 version = "0.1.0"
 dependencies = [
  "gtk4",
+ "home",
  "input",
  "libc",
  "md-5",

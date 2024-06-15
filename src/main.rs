@@ -178,11 +178,11 @@ fn build_ui(app: &Application) {
     let ecm = gtk::EventControllerMotion::new();
     ecm.connect_enter(move |_, _, _| {
         *hold_enter.lock().unwrap() = true;
-        println!("pointer enter window");
+        //println!("pointer enter window");
     });
     ecm.connect_leave(move |_| {
         *hold_leave.lock().unwrap() = false;
-        println!("pointer leave window");
+        //println!("pointer leave window");
     });
     window.add_controller(ecm);
     window.set_visible(false);

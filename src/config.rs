@@ -32,7 +32,9 @@ pub struct Bing {}
 pub fn get_config() -> &'static Config {
     static CONFIG: OnceLock<Config> = OnceLock::new();
     CONFIG.get_or_init(|| {
-        let config = fs::read_to_string("config.toml").unwrap();
+        let config =
+            fs::read_to_string(home::home_dir().unwrap().join(".config/slpopt/config.toml"))
+                .unwrap();
         let config = toml::from_str(config.as_str()).unwrap();
         config
     })
