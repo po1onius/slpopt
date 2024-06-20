@@ -5,3 +5,4 @@
 在config.toml填写自己的api token信息
 * todo<br>
 添加更多api
+tray icon
