@@ -18,7 +18,7 @@ use tokio::{self, select};
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow};
 
-use crate::config::MOUSE_LEFT;
+use crate::config::{get_config, MOUSE_LEFT};
 
 struct Interface;
 
@@ -160,12 +160,26 @@ fn translate_run(
                 //let text = clipboard.get().clipboard(arboard::LinuxClipboardKind::Primary).text().unwrap();
                 //println!("translate request: {}", text);
 
-                let res = api.request(text.as_str()).await;
-
+                let mut res = String::from("no result!");
+                if let Some(t) = get_config().timeout {
+                    select! {
+                        r = api.request(text.as_str()) => {
+                            res = r;
+                        }
+                        _ = tokio::time::sleep(std::time::Duration::from_secs(t as u64)) => {
+                            //println!("timeout");
+                            continue;
+                        }
+                    }
+                } else {
+                    res = api.request(text.as_str()).await;
+                }
                 reset_tx.send(()).await.unwrap();
                 //println!("fan yi xiang ying {}", res);
 
                 res_tx.send(res).await.unwrap();
+                //let res = api.request(text.as_str()).await;
+
             }
         });
     });

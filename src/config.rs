@@ -12,6 +12,7 @@ pub struct Config {
     pub language: String,
     pub modkey: String,
     pub vendor: String,
+    pub timeout: Option<u8>,
     pub baidu: Option<Baidu>,
     pub google: Option<Google>,
     pub bing: Option<Bing>,
