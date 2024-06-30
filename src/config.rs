@@ -9,9 +9,8 @@ pub const MOUSE_LEFT: u32 = 272;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub language: String,
+    pub language: Vec<String>,
     pub modkey: String,
-    pub vendor: String,
     pub timeout: Option<u8>,
     pub baidu: Option<Baidu>,
     pub google: Option<Google>,
@@ -29,6 +28,9 @@ pub struct Google {}
 
 #[derive(Deserialize)]
 pub struct Bing {}
+
+
+pub static VENDOR: [&'static str; 3] = ["baidu", "google", "bing"];
 
 pub fn get_config() -> &'static Config {
     static CONFIG: OnceLock<Config> = OnceLock::new();

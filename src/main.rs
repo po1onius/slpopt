@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod tray;
 
 use input::event::keyboard::{KeyState, KeyboardEventTrait};
 use input::event::pointer::ButtonState;
@@ -12,13 +13,15 @@ use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
 use std::path::Path;
 use std::time::Duration;
 
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use tokio::{self, select};
 
 use gtk::prelude::*;
 use gtk::{glib, Application, ApplicationWindow};
 
-use crate::config::{get_config, MOUSE_LEFT};
+use ksni;
+
+use crate::config::{get_config, MOUSE_LEFT, VENDOR};
 
 struct Interface;
 
@@ -61,8 +64,19 @@ fn daemonize() {
     }
 }
 
+static TRAY_HANDLE: OnceLock<ksni::Handle<tray::SlpoptTray>> = OnceLock::new();
+
 fn main() {
     daemonize();
+
+    let service = ksni::TrayService::new(tray::SlpoptTray {
+        target_language: 0,
+        vendor: 0,
+    });
+    let handle = service.handle();
+    TRAY_HANDLE.set(handle);
+    service.spawn();
+    
     let app = Application::builder().application_id("org.slpopt").build();
     app.connect_activate(build_ui);
     app.run();
@@ -161,9 +175,19 @@ fn translate_run(
                 //println!("translate request: {}", text);
 
                 let mut res = String::from("no result!");
+
+                let mut vendor_index = 0;
+                let mut language_index = 0;
+                {
+                    let tray_state = TRAY_HANDLE.get().unwrap().update(|t|&*t);
+                    vendor_index = tray_state.vendor;
+                    language_index = tray_state.target_language;
+                }
+                let vendor = VENDOR[vendor_index];
+                let language = get_config().language[language_index].as_str();
                 if let Some(t) = get_config().timeout {
                     select! {
-                        r = api.request(text.as_str()) => {
+                        r = api.request(text.as_str(), vendor, language) => {
                             res = r;
                         }
                         _ = tokio::time::sleep(std::time::Duration::from_secs(t as u64)) => {
@@ -172,7 +196,7 @@ fn translate_run(
                         }
                     }
                 } else {
-                    res = api.request(text.as_str()).await;
+                    res = api.request(text.as_str(), vendor, language).await;
                 }
                 reset_tx.send(()).await.unwrap();
                 //println!("fan yi xiang ying {}", res);

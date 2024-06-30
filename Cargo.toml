@@ -19,3 +19,4 @@ selection = "1.2"
 gtk = { version = "0.8.2", package = "gtk4" }
 home = "0.5.9"
 daemonize = "0.5.0"
+ksni = "0.2.2"
