@@ -1,6 +1,5 @@
-language = "zh"
+language = ["zh", "ru"]
 modkey = "LEFTALT" # "None" "LEFTCTRL" "RIGHTALT" "RIGHTCTRL"
-vendor = "baidu"
 timeout = 3
 [baidu]
 appid = "20240111002048066"

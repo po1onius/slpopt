@@ -23,11 +23,17 @@ impl ksni::Tray for SlpoptTray {
         use ksni::menu::*;
         let mut vendor_vec = Vec::new();
         for i in config::VENDOR {
-            vendor_vec.push(RadioItem {label: i.into(), ..Default::default()});
+            vendor_vec.push(RadioItem {
+                label: i.into(),
+                ..Default::default()
+            });
         }
         let mut language_vec = Vec::new();
         for i in config::get_config().language.iter() {
-            language_vec.push(RadioItem {label: i.into(), ..Default::default()});
+            language_vec.push(RadioItem {
+                label: i.into(),
+                ..Default::default()
+            });
         }
         vec![
             RadioGroup {
@@ -56,6 +62,7 @@ impl ksni::Tray for SlpoptTray {
                 activate: Box::new(|_| std::process::exit(0)),
                 ..Default::default()
             }
-            .into()        ]
+            .into(),
+        ]
     }
 }

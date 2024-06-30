@@ -22,7 +22,6 @@ impl TransRequest {
     async fn baidu(&self, text: &str, target_language: &str) -> String {
         let config = config::get_config();
         if let Some(baidu) = &config.baidu {
-            
             let mut rng = rand::thread_rng();
             let salt = rng.gen_range(32768..65536).to_string();
             let h = format!(
@@ -71,14 +70,30 @@ impl TransRequest {
                 v["error_msg"].as_str().unwrap().to_string()
             }
         } else {
-            "no baidu token".into()
+            no_token_error()
         }
+    }
+
+    async fn google(&self, text: &str, target_language: &str) -> String {
+        //TODO
+        no_token_error()
+    }
+
+    async fn bing(&self, text: &str, target_language: &str) -> String {
+        //TODO
+        no_token_error()
     }
 
     pub async fn request(&self, text: &str, vendor: &str, target_language: &str) -> String {
         match vendor {
             "baidu" => self.baidu(text, target_language).await,
-            _ => "error".to_string(),
+            "google" => self.google(text, target_language).await,
+            "bing" => self.bing(text, target_language).await,
+            _ => no_token_error(),
         }
     }
+}
+
+fn no_token_error() -> String {
+    "no token info".into()
 }

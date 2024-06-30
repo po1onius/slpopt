@@ -47,8 +47,8 @@ fn daemonize() {
     let stderr = File::create("/tmp/daemon.err").unwrap();
 
     let daemonize = daemonize::Daemonize::new()
-        .pid_file("/tmp/slpopt.pid") // Every method except `new` and `start`
-        .chown_pid_file(true) // is optional, see `Daemonize` documentation
+        //.pid_file("/tmp/slpopt.pid") // Every method except `new` and `start`
+        //.chown_pid_file(true) // is optional, see `Daemonize` documentation
         .working_directory("/tmp") // for default behaviour.
         .user("nobody")
         .group("daemon") // Group name
@@ -74,9 +74,9 @@ fn main() {
         vendor: 0,
     });
     let handle = service.handle();
-    TRAY_HANDLE.set(handle);
+    let _ = TRAY_HANDLE.set(handle);
     service.spawn();
-    
+
     let app = Application::builder().application_id("org.slpopt").build();
     app.connect_activate(build_ui);
     app.run();
@@ -176,15 +176,13 @@ fn translate_run(
 
                 let mut res = String::from("no result!");
 
-                let mut vendor_index = 0;
-                let mut language_index = 0;
-                {
-                    let tray_state = TRAY_HANDLE.get().unwrap().update(|t|&*t);
-                    vendor_index = tray_state.vendor;
-                    language_index = tray_state.target_language;
-                }
+                let (language_index, vendor_index) = TRAY_HANDLE
+                    .get()
+                    .unwrap()
+                    .update(|t| (t.target_language, t.vendor));
                 let vendor = VENDOR[vendor_index];
                 let language = get_config().language[language_index].as_str();
+                //println!("{}, {}", vendor, language);
                 if let Some(t) = get_config().timeout {
                     select! {
                         r = api.request(text.as_str(), vendor, language) => {
@@ -203,7 +201,6 @@ fn translate_run(
 
                 res_tx.send(res).await.unwrap();
                 //let res = api.request(text.as_str()).await;
-
             }
         });
     });
