@@ -67,7 +67,7 @@ fn daemonize() {
 static TRAY_HANDLE: OnceLock<ksni::Handle<tray::SlpoptTray>> = OnceLock::new();
 
 fn main() {
-    daemonize();
+    //daemonize();
 
     let service = ksni::TrayService::new(tray::SlpoptTray {
         target_language: 0,
@@ -227,7 +227,7 @@ fn build_ui(app: &Application) {
         .title("slpopt")
         .default_width(300)
         .default_height(100)
-        .decorated(false)
+        .decorated(true)
         .resizable(false)
         .child(&label)
         .build();
