@@ -1,3 +1,4 @@
+use image;
 use ksni;
 
 use crate::config;
@@ -9,9 +10,22 @@ pub struct SlpoptTray {
 }
 
 impl ksni::Tray for SlpoptTray {
-    fn icon_name(&self) -> String {
-        "slpopt".into()
+    fn icon_pixmap(&self) -> Vec<ksni::Icon> {
+        let img_png = image::open("slpopt_tray_icon.png").unwrap();
+        let mut img = img_png.to_rgba8();
+        for image::Rgba(pixel) in img.pixels_mut() {
+            *pixel = u32::from_be_bytes(*pixel).rotate_right(8).to_be_bytes();
+        }
+        vec![ksni::Icon {
+            width: img_png.width() as i32,
+            height: img_png.height() as i32,
+            data: img.into_raw(),
+        }]
     }
+
+    //fn icon_name(&self) -> String {
+    //    "slpopt".into()
+    //}
     fn title(&self) -> String {
         "slpopt".into()
     }
