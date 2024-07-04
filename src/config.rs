@@ -29,17 +29,22 @@ pub struct Google {}
 #[derive(Deserialize)]
 pub struct Bing {}
 
-
 pub static VENDOR: [&'static str; 3] = ["baidu", "google", "bing"];
+
+const DEFAULT_CONFIG: &str = "language = [\"zh\", \"ru\"]
+modkey = \"LEFTALT\"
+timeout = 3";
 
 pub fn get_config() -> &'static Config {
     static CONFIG: OnceLock<Config> = OnceLock::new();
     CONFIG.get_or_init(|| {
-        let config =
-            fs::read_to_string(home::home_dir().unwrap().join(".config/slpopt/config.toml"))
-                .unwrap();
-        let config = toml::from_str(config.as_str()).unwrap();
-        config
+        let config_path = home::home_dir().unwrap().join(".config/slpopt/config.toml");
+        if config_path.exists() {
+            let config = fs::read_to_string(config_path).unwrap();
+            toml::from_str(config.as_str()).unwrap()
+        } else {
+            toml::from_str(DEFAULT_CONFIG).unwrap()
+        }
     })
 }
 pub fn key2no(key: &str) -> u32 {

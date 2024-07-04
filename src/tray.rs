@@ -11,7 +11,8 @@ pub struct SlpoptTray {
 
 impl ksni::Tray for SlpoptTray {
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        let img_png = image::open("slpopt_tray_icon.png").unwrap();
+        let png_bytes = include_bytes!("../slpopt_tray_icon.png");
+        let img_png = image::load_from_memory(png_bytes).unwrap();
         let mut img = img_png.to_rgba8();
         for image::Rgba(pixel) in img.pixels_mut() {
             *pixel = u32::from_be_bytes(*pixel).rotate_right(8).to_be_bytes();
