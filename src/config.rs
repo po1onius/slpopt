@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::{fs, sync::OnceLock};
+use std::{fs::{self, File}, io::Write, path::Path, sync::OnceLock};
 
 const KEY_RIGHTALT: u32 = 100;
 const KEY_LEFTALT: u32 = 56;
@@ -43,6 +43,9 @@ pub fn get_config() -> &'static Config {
             let config = fs::read_to_string(config_path).unwrap();
             toml::from_str(config.as_str()).unwrap()
         } else {
+            fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+            let mut f = File::create(config_path).unwrap();
+            f.write(DEFAULT_CONFIG.as_bytes()).unwrap();
             toml::from_str(DEFAULT_CONFIG).unwrap()
         }
     })
